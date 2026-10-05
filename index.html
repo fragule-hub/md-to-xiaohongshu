@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小红书长文 · Markdown 转换</title>
+<style>
+  :root {
+    --red: #ff2442;
+    --ink: #1c1412;
+    --muted: #8d7f76;
+    --paper: #f4efe8;
+    --card: #fffdfb;
+    --line: #eadfd4;
+    --mark: #ffe14a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background:
+      radial-gradient(900px 280px at 0% -10%, #ffe4e8, transparent 55%),
+      var(--paper);
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 28px 20px 40px; }
+  .top { margin-bottom: 18px; }
+  h1 { margin: 0 0 8px; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+  .sub { margin: 0; max-width: 680px; color: var(--muted); font-size: 14px; line-height: 1.65; }
+  .steps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .step {
+    background: rgba(255,255,255,.7); border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px 10px; font-size: 12px; color: var(--muted);
+  }
+  .step b { color: var(--red); font-weight: 650; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch; }
+  @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    overflow: hidden; display: flex; flex-direction: column; min-height: 560px;
+    box-shadow: 0 10px 30px rgba(80, 40, 20, .04);
+  }
+  .panel header {
+    display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;
+    padding: 14px 16px; border-bottom: 1px solid var(--line);
+  }
+  .panel h2 { margin: 0; font-size: 15px; font-weight: 650; }
+  .panel header p { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
+  .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+  button { font: inherit; cursor: pointer; }
+  button.ghost {
+    background: #fff; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 999px; padding: 6px 12px; font-size: 13px;
+  }
+  button.ghost:hover { border-color: #d7c6b8; }
+  button.primary {
+    background: var(--red); color: #fff; border: none; border-radius: 999px;
+    padding: 9px 16px; font-size: 14px; font-weight: 700; white-space: nowrap;
+    box-shadow: 0 8px 16px rgba(255, 36, 66, .22);
+  }
+  button.primary:hover { filter: brightness(1.05); }
+  textarea {
+    flex: 1; width: 100%; min-height: 420px; border: none; resize: vertical;
+    padding: 16px 18px 20px; outline: none; background: transparent;
+    font-family: Consolas, "Sarasa Mono SC", "Courier New", monospace;
+    font-size: 14px; line-height: 1.7; color: var(--ink);
+  }
+  #preview {
+    flex: 1; min-height: 420px; overflow: auto; padding: 8px 22px 28px;
+    font-size: 16px; line-height: 1.85;
+  }
+  #preview h1 { font-size: 24px; line-height: 1.35; margin: 18px 0 8px; }
+  #preview h2 { font-size: 19px; line-height: 1.4; margin: 16px 0 6px; }
+  #preview h3 { font-size: 16px; line-height: 1.45; margin: 14px 0 4px; }
+  #preview p { margin: 8px 0; }
+  #preview mark { background: var(--mark); padding: 0 2px; border-radius: 2px; }
+  #preview strong, #preview b {
+    background: #ffe9ec; padding: 0 2px; border-radius: 2px; font-weight: 700;
+  }
+  #preview ul, #preview ol { margin: 8px 0; padding-left: 1.3em; }
+  #preview blockquote {
+    margin: 10px 0; padding: 2px 0 2px 12px;
+    border-left: 3px solid #f0b8c2; color: #5c514c;
+  }
+  #preview code {
+    font-family: Consolas, monospace; font-size: .92em;
+    background: #f6f0e8; padding: 0 4px; border-radius: 4px;
+  }
+  #preview hr { border: none; border-top: 1px solid var(--line); margin: 16px 0; }
+  .preview-empty {
+    height: 100%; min-height: 360px; display: flex; flex-direction: column;
+    align-items: flex-start; justify-content: center; gap: 6px; color: var(--muted);
+  }
+  .preview-empty strong { color: var(--ink); font-size: 16px; font-weight: 650; }
+  .help {
+    margin-top: 14px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 4px 16px 12px;
+  }
+  .help summary { cursor: pointer; padding: 12px 0; font-size: 14px; color: #5c514c; }
+  .help p { margin: 0 0 10px; font-size: 13px; line-height: 1.7; color: var(--muted); }
+  .help-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+  select {
+    font: inherit; padding: 6px 10px; border-radius: 999px;
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+  }
+  .foot { margin: 12px 2px 0; font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 999px;
+    font-size: 13px; display: none; z-index: 9; max-width: min(520px, 92vw);
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <h1>把 Markdown 变成小红书长文</h1>
+      <p class="sub">小红书只认识剪贴板里的格式，不认识 <code>#</code> 和 <code>**</code>。它也没有「加粗」，重点要变成黄色高亮。在这里看一眼效果，再复制过去。</p>
+      <div class="steps">
+        <span class="step"><b>1</b> 贴上 Markdown</span>
+        <span class="step"><b>2</b> 看右侧是不是你要的标题和高亮</span>
+        <span class="step"><b>3</b> 复制，到小红书长文里粘贴</span>
+      </div>
+    </div>
+
+    <div class="cols">
+      <section class="panel">
+        <header>
+          <div>
+            <h2>原文</h2>
+            <p>支持从文档直接粘贴</p>
+          </div>
+          <div class="actions">
+            <button id="pasteBtn" class="ghost" type="button">从剪贴板粘贴</button>
+            <button id="sampleBtn" class="ghost" type="button">填入示例</button>
+            <button id="clearBtn" class="ghost" type="button">清空</button>
+          </div>
+        </header>
+        <textarea id="src" spellcheck="false" placeholder="# 标题&#10;&#10;正文里 **这三个字** 会变成高亮。&#10;&#10;- 列表会保留&#10;&#10;&gt; 引用也会保留"></textarea>
+      </section>
+
+      <section class="panel">
+        <header>
+          <div>
+            <h2>粘贴后的样子</h2>
+            <p id="stats">还没有内容</p>
+          </div>
+          <button id="copyBtn" class="primary" type="button">复制，去小红书粘贴</button>
+        </header>
+        <div id="preview"></div>
+      </section>
+    </div>
+
+    <details class="help">
+      <summary>粘贴后高亮或标题没生效</summary>
+      <p>先确认没有经过记事本。网页创作平台和手机 App 的结果可能不一样。下面两项只在出问题时用，平时不用改。</p>
+      <div class="help-row">
+        <label>重点用哪种标签
+          <select id="boldTag">
+            <option value="mark" selected>荧光高亮（推荐）</option>
+            <option value="strong">strong</option>
+            <option value="b">b</option>
+          </select>
+        </label>
+        <button id="copyTestBtn" class="ghost" type="button">复制一小段测试</button>
+        <button id="probeBtn" class="ghost" type="button">复制标题探测</button>
+      </div>
+      <p>「一小段测试」用来看当前标签会不会变成高亮。标题探测会复制七行：A 是一级标题，B 是二级，C 是三级，D、E 是加粗，F 是下划线，G 是荧光高亮。粘进去看哪一行变成了小标题、哪一行变成了高亮。改动过的标签会记住，下次打开还是它。</p>
+    </details>
+    <p class="foot">在原文里按 Ctrl+Enter 也可以复制。复制失败时，在右侧全选再复制。不要先粘到记事本，否则 <code>##</code> 和 <code>**</code> 会变成普通文字。</p>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script>
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function boldTagName(boldTag) {
+  return boldTag === "strong" || boldTag === "b" ? boldTag : "mark";
+}
+function inline(raw, boldTag) {
+  const codes = [];
+  let s = String(raw).replace(/`([^`]+)`/g, (_, c) => {
+    codes.push(c);
+    return "\u0000C" + (codes.length - 1) + "\u0000";
+  });
+  s = s.replace(/!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g, (_, alt) => alt || "图片");
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) => text + "（" + url + "）");
+  const bt = boldTagName(boldTag);
+  let out = esc(s);
+  out = out.replace(/==([^=\n]+)==/g, "<" + bt + ">$1</" + bt + ">");
+  out = out.replace(/\*\*([^*\n]+)\*\*/g, "<" + bt + ">$1</" + bt + ">");
+  out = out.replace(/(^|[^A-Za-z0-9])__([^_\n]+)__/g, "$1<" + bt + ">$2</" + bt + ">");
+  out = out.replace(/(^|[^*])\*(\S(?:[^*\n]*?\S)?)\*(?!\*)/g, "$1<em>$2</em>");
+  out = out.replace(/~~([^~\n]+)~~/g, "<del>$1</del>");
+  out = out.replace(/\u0000C(\d+)\u0000/g, (_, i) => "<code>" + esc(codes[Number(i)]) + "</code>");
+  return out;
+}
+function headingPlain(raw) {
+  let s = String(raw).trim();
+  s = s.replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1");
+  s = s.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
+  s = s.replace(/`([^`]+)`/g, "$1");
+  s = s.replace(/\*\*([^*]+)\*\*/g, "$1");
+  s = s.replace(/__([^_\n]+)__/g, "$1");
+  s = s.replace(/==([^=\n]+)==/g, "$1");
+  s = s.replace(/~~([^~\n]+)~~/g, "$1");
+  s = s.replace(/(^|[^*])\*(\S(?:[^*\n]*?\S)?)\*(?!\*)/g, "$1$2");
+  return s;
+}
+function headingText(raw) {
+  return esc(headingPlain(raw));
+}
+function listBody(text) {
+  const box = String(text).match(/^\[( |x|X)\][ \t]+([\s\S]+)$/);
+  if (!box) return text;
+  return (box[1].toLowerCase() === "x" ? "☑ " : "☐ ") + box[2];
+}
+function md2html(md, boldTag) {
+  const lines = String(md).replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  const html = [];
+  let inUl = false, inOl = false, heldBlank = false;
+  let para = [];
+  let quoteBuf = [];
+  let fence = null;
+  const flushQuote = () => {
+    if (!quoteBuf.length) return;
+    html.push("<blockquote>" + quoteBuf.join("<br>") + "</blockquote>");
+    quoteBuf = [];
+  };
+  const closeLists = () => {
+    if (inUl) { html.push("</ul>"); inUl = false; }
+    if (inOl) { html.push("</ol>"); inOl = false; }
+    flushQuote();
+    heldBlank = false;
+  };
+  const flushPara = () => {
+    if (!para.length) return;
+    html.push("<p>" + para.map((l) => inline(l, boldTag)).join("<br>") + "</p>");
+    para = [];
+  };
+  const flushAll = () => { flushPara(); closeLists(); };
+  const pushHeading = (level, text) => {
+    flushAll();
+    const lvl = Math.min(level, 3);
+    html.push("<h" + lvl + ">" + headingText(text) + "</h" + lvl + ">");
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].replace(/[ \t]+$/g, "");
+    const trim = line.trim();
+    if (fence !== null) {
+      if (/^```|^~~~/.test(trim)) {
+        html.push("<p><code>" + (fence.map(esc).join("<br>") || " ") + "</code></p>");
+        fence = null;
+      } else fence.push(line);
+      continue;
+    }
+    if (/^(```|~~~)/.test(trim)) { flushAll(); fence = []; continue; }
+    if (!trim) {
+      if (inUl || inOl || quoteBuf.length) heldBlank = true;
+      else flushPara();
+      continue;
+    }
+    const isUl = /^[-*+][ \t]+/.test(trim);
+    const isOl = /^\d+[.、][ \t]+/.test(trim);
+    const isQ = /^>/.test(trim);
+    if (heldBlank && !((inUl && isUl) || (inOl && isOl) || (quoteBuf.length && isQ))) closeLists();
+    heldBlank = false;
+    let m;
+    if ((m = trim.match(/^(#{1,6})[ \t]+(.+)$/) || trim.match(/^(#{1,6})([^\s#].*)$/))) {
+      pushHeading(m[1].length, m[2]);
+    } else if (/^(-{3,}|\*{3,})$/.test(trim)) {
+      flushAll();
+      html.push("<hr>");
+    } else if ((m = trim.match(/^>[ \t]?(.*)$/))) {
+      flushPara();
+      if (inUl) { html.push("</ul>"); inUl = false; }
+      if (inOl) { html.push("</ol>"); inOl = false; }
+      const q = inline(m[1], boldTag);
+      if (q || quoteBuf.length) quoteBuf.push(q);
+    } else if ((m = trim.match(/^[-*+][ \t]+([\s\S]+)$/))) {
+      flushPara();
+      if (inOl) { html.push("</ol>"); inOl = false; }
+      flushQuote();
+      if (!inUl) { html.push("<ul>"); inUl = true; }
+      html.push("<li>" + inline(listBody(m[1]), boldTag) + "</li>");
+    } else if ((m = trim.match(/^\d+[.、][ \t]+([\s\S]+)$/))) {
+      flushPara();
+      if (inUl) { html.push("</ul>"); inUl = false; }
+      flushQuote();
+      if (!inOl) { html.push("<ol>"); inOl = true; }
+      html.push("<li>" + inline(listBody(m[1]), boldTag) + "</li>");
+    } else {
+      closeLists();
+      para.push(trim);
+    }
+  }
+  if (fence !== null) {
+    para.push("```", ...fence);
+    fence = null;
+  }
+  flushAll();
+  return html.join("\n");
+}
+
+const src = document.getElementById("src");
+const preview = document.getElementById("preview");
+const tagSel = document.getElementById("boldTag");
+const SAMPLE = "# 教你三个技巧\n\n这是正文，**这三个字会变高亮**，其余不变。\n\n- 第一点\n- 第二点\n\n> 引用块测试\n";
+
+try {
+  const saved = localStorage.getItem("xhs-bold-tag");
+  if (saved) tagSel.value = saved;
+} catch (e) {}
+
+function currentHtml() {
+  return md2html(src.value, tagSel.value);
+}
+function describe(html) {
+  const tag = boldTagName(tagSel.value);
+  const titles = (html.match(/<h[1-3]\b/g) || []).length;
+  const marks = (html.match(new RegExp("<" + tag + "\\b", "g")) || []).length;
+  const label = tag === "mark" ? "高亮" : "重点";
+  const parts = [
+    titles ? titles + " 个标题" : "没有标题",
+    marks ? marks + " 处" + label : "没有" + label,
+  ];
+  if (tag !== "mark") parts.push("正在试 <" + tag + ">");
+  return parts.join(" · ");
+}
+function render() {
+  const stats = document.getElementById("stats");
+  if (!src.value.trim()) {
+    preview.innerHTML = '<div class="preview-empty"><strong>预览会显示在这里</strong><span>标题、列表和黄色高亮，会一起复制到小红书。</span></div>';
+    stats.textContent = "还没有内容";
+    return;
+  }
+  const html = currentHtml();
+  preview.innerHTML = html;
+  stats.textContent = describe(html);
+}
+src.addEventListener("input", render);
+tagSel.addEventListener("change", () => {
+  try { localStorage.setItem("xhs-bold-tag", tagSel.value); } catch (e) {}
+  render();
+});
+render();
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.display = "block";
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.style.display = "none", 2200);
+}
+function htmlToPlain(html) {
+  const d = document.createElement("div");
+  d.innerHTML = html;
+  return d.innerText || d.textContent || "";
+}
+function execCopyHtml(html) {
+  const holder = document.createElement("div");
+  holder.contentEditable = "true";
+  holder.style.cssText = "position:fixed;left:-9999px;top:0;";
+  holder.innerHTML = html;
+  document.body.appendChild(holder);
+  const range = document.createRange();
+  range.selectNodeContents(holder);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+  sel.removeAllRanges();
+  holder.remove();
+  return ok;
+}
+async function copyRich(html, quiet) {
+  const plain = htmlToPlain(html);
+  const payload = '<meta charset="utf-8">' + html;
+  let ok = false;
+  if (navigator.clipboard && window.ClipboardItem) {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({
+        "text/html": new Blob([payload], { type: "text/html" }),
+        "text/plain": new Blob([plain], { type: "text/plain" }),
+      })]);
+      ok = true;
+    } catch (e) { ok = false; }
+  }
+  if (!ok) ok = execCopyHtml(html);
+  if (!quiet) toast(ok ? "已复制。到小红书长文编辑器里粘贴" : "复制失败。请在右侧预览里全选后再复制");
+  return ok;
+}
+document.getElementById("copyBtn").addEventListener("click", () => {
+  if (!src.value.trim()) { toast("还没有内容。先粘贴 Markdown，或点「填入示例」"); return; }
+  copyRich(currentHtml());
+});
+src.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    e.preventDefault();
+    document.getElementById("copyBtn").click();
+  }
+});
+document.getElementById("probeBtn").addEventListener("click", async () => {
+  const html = [
+    "<h1>标题探测-A（h1 标签）</h1>",
+    "<h2>标题探测-B（h2 标签）</h2>",
+    "<h3>标题探测-C（h3 标签）</h3>",
+    "<p><strong>标题探测-D（strong 加粗段落）</strong></p>",
+    "<p><b>标题探测-E（b 加粗段落）</b></p>",
+    "<p><u>标题探测-F（u 下划线段落）</u></p>",
+    "<p><mark>标题探测-G（mark 荧光高亮）</mark></p>"
+  ].join("\n");
+  const ok = await copyRich(html, true);
+  toast(ok ? "已复制标题探测。粘贴后看 A 到 G 哪一行变成了小标题或高亮" : "复制失败");
+});
+document.getElementById("copyTestBtn").addEventListener("click", () => {
+  copyRich("<p>普通文字" + inline("**这段文字**", tagSel.value) + "后面普通。中间若变成高亮，说明当前选择的标签可被识别。</p>");
+});
+document.getElementById("pasteBtn").addEventListener("click", async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      src.value = text;
+      render();
+      toast("已从剪贴板粘贴");
+    } else {
+      toast("剪贴板是空的");
+    }
+  } catch (e) {
+    src.focus();
+    toast("浏览器没有允许读取剪贴板。请在左侧直接 Ctrl+V");
+  }
+});
+document.getElementById("sampleBtn").addEventListener("click", () => {
+  src.value = SAMPLE;
+  render();
+  src.focus();
+});
+document.getElementById("clearBtn").addEventListener("click", () => {
+  src.value = "";
+  render();
+  src.focus();
+});
+</script>
+</body>
+</html>
